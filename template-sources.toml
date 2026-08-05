@@ -1,0 +1,15 @@
+# Pinned immutable archives for the published boilerplates.
+# Update url/commit/sha256 together when bumping pins.
+#
+# Archive URL form:
+#   https://github.com/<org>/<repo>/archive/<full-commit-sha>.zip
+
+[backend]
+url = "https://github.com/pedrodotpy/backend-boilerplate/archive/9e0be601b3f0580cfa8253ebafce50cdd9eb4166.zip"
+commit = "9e0be601b3f0580cfa8253ebafce50cdd9eb4166"
+sha256 = "e66e1368c52551623d767d2308f4a36cebb8a73eb3fc86eec04a910d0ed274dd"
+
+[frontend]
+url = "https://github.com/pedrodotpy/frontend-boilerplate/archive/20717485678a0b23ed31b68d87af5af2d2ef5ea9.zip"
+commit = "20717485678a0b23ed31b68d87af5af2d2ef5ea9"
+sha256 = "ec680c074d0bcd26c1598db0190b44252bbb5e5ad11aa102fbeb34c5634628e4"

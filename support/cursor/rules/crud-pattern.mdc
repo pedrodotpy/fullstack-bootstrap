@@ -1,0 +1,27 @@
+---
+description: CRUD resource pattern for Django DRF + React Query + OpenAPI client
+globs: apps/**/*.py,src/features/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# CRUD pattern
+
+Copy the User resource end-to-end; do not invent a parallel structure.
+
+## Backend
+
+1. Model (prefer `IndexedTimeStampedModel`)
+2. `makemigrations` / `migrate` via manage.py
+3. Serializers (read + write; write-only secrets)
+4. ViewSet with `IsAuthenticated` + model permissions including `view`
+5. Register in app `routes.py`
+6. Regenerate OpenAPI: `make schema`
+
+## Frontend
+
+1. `yarn openapi-ts` from `{{frontend_repo}}`
+2. Feature hooks wrapping generated SDK
+3. List / detail / create / edit pages under the authenticated shell
+4. Gate actions with `<Can perm="...">` and route guards
+
+See `./SPECS/04-crud-pattern.md` for the full checklist.
