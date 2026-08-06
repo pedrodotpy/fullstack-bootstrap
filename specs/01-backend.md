@@ -15,19 +15,20 @@ django-boilerplate/
   .env.example
   schema.yml
   config/
+    celery.py            # Celery app (autodiscover)
     settings/
       base.py
       local.py.example   # copy → local.py (gitignored)
       production.py
-      test.py
+      test.py            # CELERY_TASK_ALWAYS_EAGER
     urls.py
   apps/
     common/models.py     # IndexedTimeStampedModel
-    email_server/        # SMTPServer in DB (Django admin only)
+    email_server/        # SMTPServer + Celery send_mail_task
     users/
       models.py          # email User
       email_auth.py      # EmailAuthCode (OTP)
-      auth_codes.py      # create/send helpers
+      auth_codes.py      # create + queue_mail helpers
       managers.py
       routes.py
       templates/users/email/
@@ -45,10 +46,16 @@ django-boilerplate/
 - Driver: `psycopg` (binary).
 - `DJANGO_SETTINGS_MODULE=config.settings.local` for development.
 - `LOGIN_2FA_ENABLED` (env, default `False`) gates login-time email OTP.
+- Celery:
+  - Broker/result: `CELERY_BROKER_URL` / `CELERY_RESULT_BACKEND` (default `redis://redis:6379/0`).
+  - App: `config.celery` (`celery -A config worker`).
+  - Compose services: `redis` + `worker` (same image as `backend`).
+  - **test** / Playwright e2e backend: `CELERY_TASK_ALWAYS_EAGER=True` so mail runs in-process without a worker.
 - Email:
   - **local**: `EMAIL_BACKEND = filebased.EmailBackend`, writes to `sent_emails/` (gitignored).
   - **production**: `EMAIL_BACKEND = smtp.EmailBackend`; host/user/password/`from_email` come from `email_server.SMTPServer` at send time (Django admin).
-  - `SMTPServer.send_mail()` uses DB credentials only when the active backend is SMTP; otherwise it honors `get_connection()` so local filebased works without SMTP rows.
+  - `SMTPServer.send_mail()` is the **sync** sender (used by the Celery task). Request handlers call `queue_mail()` → `send_mail_task.delay(...)`.
+  - Auth OTP / password-reset emails are always queued asynchronously (eager under pytest/e2e).
 ## Stack
 
 | Package | Purpose |
@@ -58,6 +65,7 @@ django-boilerplate/
 | djangorestframework-simplejwt | JWT (+ token_blacklist) |
 | django-cors-headers | SPA origin |
 | drf-spectacular | OpenAPI schema |
+| celery[redis] | Background tasks (email) |
 | python-decouple, dj-database-url | Config |
 | psycopg[binary] | Postgres driver |
 | django-model-utils | Timestamp fields |
@@ -166,7 +174,9 @@ make createsuperuser
 make schema
 make seed-e2e
 make test
-make run
+make up              # db + redis + backend + worker
+make run             # db + redis + backend (start worker separately for mail)
+make worker
 # Dependency adds (inside the backend container):
 docker compose run --rm backend uv add <pkg>
 docker compose run --rm backend uv add --dev <pkg>

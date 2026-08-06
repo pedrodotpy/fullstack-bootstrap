@@ -22,13 +22,14 @@ Private, login-gated Django REST + React SPA boilerplate as **two sibling repos 
 - **User:** custom email-based `User` (`USERNAME_FIELD = "email"`).
 - **API contract:** `drf-spectacular` → `schema.yml` → `@hey-api/openapi-ts` client in the React repo.
 - **Example resource:** full User CRUD (list / detail / create / edit) gated by model perms.
-- **Runtime:** Docker Compose with Postgres for local/dev and pytest (pytest-django test DB on the same server).
+- **Runtime:** Docker Compose with Postgres + Redis; Celery worker for background tasks (auth emails).
+- **Email:** OTP / password-reset mail is queued via Celery (`apps.email_server.tasks.queue_mail`).
 
 ## Inspired by Vinta (adopted vs not)
 
-**Adopted:** email User, `IndexedTimeStampedModel`, settings split, `DATABASE_URL`, DRF `IsAuthenticated` + limit/offset pagination, app `routes.py` registry, spectacular + openapi-ts, 401 → login with `next`, Ruff/pre-commit, Makefiles, Docker Compose + Postgres.
+**Adopted:** email User, `IndexedTimeStampedModel`, settings split, `DATABASE_URL`, DRF `IsAuthenticated` + limit/offset pagination, app `routes.py` registry, spectacular + openapi-ts, 401 → login with `next`, Ruff/pre-commit, Makefiles, Docker Compose + Postgres, Celery + Redis for async email.
 
-**Not adopted:** monorepo/Webpack/django-webpack-loader, Poetry/pnpm, session+CSRF as primary SPA auth, admin-as-login, Celery/Redis/defender/CSP/Sentry/Render as v1 requirements, public Home page.
+**Not adopted:** monorepo/Webpack/django-webpack-loader, Poetry/pnpm, session+CSRF as primary SPA auth, admin-as-login, defender/CSP/Sentry/Render as v1 requirements, public Home page.
 
 ## Local run (summary)
 
@@ -42,7 +43,8 @@ cp config/settings/local.py.example config/settings/local.py
 make build
 make migrate
 make createsuperuser
-make run
+make up              # db + redis + backend + worker (async email)
+# or: make run       # db + redis + backend only (no worker)
 
 # Frontend (separate terminal)
 cd react-boilerplate
@@ -72,4 +74,4 @@ cd react-boilerplate && make test-e2e-2fa
 - Public landing/marketing pages and self-service signup
 - Django admin as product UI
 - SSO, object-level permissions, resource scaffold CLI
-- Celery/Redis/Render as required defaults
+- Render / Sentry / CSP as required defaults

@@ -62,6 +62,8 @@ Reset page
 
 OTP rows live in `users.EmailAuthCode` (`challenge_id`, `code`, `purpose`, `expiration_date`, `validated_at`). Creating a new code invalidates prior open codes for the same user+purpose.
 
+Email delivery is **asynchronous**: `create_and_send_auth_code` creates the OTP row synchronously, then `queue_mail()` enqueues `email_server.tasks.send_mail_task` (Celery). Pytest and Playwright e2e use `CELERY_TASK_ALWAYS_EAGER` so mail still lands in `mail.outbox` / filebased without a separate worker. Local `make up` runs `redis` + `worker` for real async delivery.
+
 ## Anonymous allowlist (API)
 
 - `POST /api/v1/auth/token/`
