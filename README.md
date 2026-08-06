@@ -4,6 +4,8 @@ Deterministic one-command bootstrap for sibling Django + React repositories.
 
 Inspired by [Vinta's django-react-boilerplate](https://github.com/vintasoftware/django-react-boilerplate) template flow, adapted to a **three-repository** layout: pinned backend boilerplate, pinned frontend boilerplate, and this tooling repo (CLI + specs + agent support).
 
+Generated apps are **Docker-first**: Postgres, Django, Vite, and test suites run via Docker Compose / Make.
+
 ## Usage
 
 Client name is the only runtime parameter:
@@ -12,12 +14,12 @@ Client name is the only runtime parameter:
 uvx --from git+https://github.com/<org>/fullstack-bootstrap.git fullstack-bootstrap "Acme Corp"
 ```
 
-From a local checkout:
+From a local checkout (Docker):
 
 ```bash
 cd fullstack-bootstrap
-uv sync --group dev
-uv run fullstack-bootstrap "Acme Corp"
+docker compose run --rm test uv run fullstack-bootstrap "Acme Corp"
+# or, after `make build`: make test  # pytest
 ```
 
 ### Derived names
@@ -49,30 +51,41 @@ acme-corp-frontend/  # git init -b main, no commit
 
 ### Explicitly not done
 
-Dependency install, `.env` creation, migrations, OpenAPI client regeneration, and first commit. Run those after bootstrap.
+Image builds, `.env` creation, migrations, OpenAPI client regeneration, and first commit. Run those after bootstrap.
 
 ## Post-generation setup
+
+Requires Docker Compose. From the directory that contains both sibling repos:
 
 ```bash
 # Backend
 cd acme-corp-backend
 cp .env.example .env
 cp acme_corp/settings/local.py.example acme_corp/settings/local.py
-uv sync
-uv run python manage.py migrate
-uv run python manage.py createsuperuser
-uv run python manage.py runserver
+make build
+make migrate
+make createsuperuser
+make run
 
 # Frontend (separate terminal)
 cd ../acme-corp-frontend
 cp .env.example .env
-yarn install
-yarn dev
+make build
+make dev
+```
+
+Open `http://localhost:5173/login`. API listens on `http://localhost:8000`.
+
+Tests:
+
+```bash
+cd acme-corp-backend && make test
+cd ../acme-corp-frontend && make test-e2e
 ```
 
 ## Pinning template sources
 
-[`template-sources.toml`](template-sources.toml) currently uses `UNSET` placeholders. After the boilerplates are published, fill:
+[`template-sources.toml`](template-sources.toml) pins backend/frontend zip URLs, commit SHAs, and SHA-256 checksums. After publishing new boilerplate commits:
 
 ```toml
 [backend]
@@ -92,20 +105,20 @@ Compute the checksum:
 curl -L "$URL" | sha256sum
 ```
 
-Until pins are set, the CLI exits with a configuration error. Unit tests use local fixture archives and do not need network access. The real-archive contract test activates automatically once URLs are no longer `UNSET`.
+Until pins are set (`UNSET`), the CLI exits with a configuration error. Unit tests use local fixture archives and do not need network access. The real-archive contract test activates automatically once URLs are no longer `UNSET`.
 
 ### Updating pins
 
 1. Publish/tag new boilerplate commits
 2. Update `url`, `commit`, and `sha256` in `template-sources.toml`
-3. Run `uv run pytest`
+3. Run `make test`
 4. Commit the pin bump in this repo
 
 ## Agent support
 
 Canonical sources live in this repository:
 
-- [`specs/`](specs/) — moved from the workspace `SPECS/` directory (unchanged content)
+- [`specs/`](specs/) — shared product/engineering specs
 - [`support/agents/`](support/agents/) — per-repo `AGENTS.md` overlays
 - [`support/cursor/rules/`](support/cursor/rules/) — Cursor rules
 - [`support/cursor/skills/fullstack-crud/`](support/cursor/skills/fullstack-crud/) — CRUD workflow skill
@@ -115,14 +128,17 @@ Generated client repos receive tailored copies so either sibling is agent-ready.
 ## Development
 
 ```bash
-uv sync --group dev
-uv run pytest
+make build
+make test          # pytest inside Docker
 ```
 
 ## Layout
 
 ```text
 fullstack-bootstrap/
+  Dockerfile
+  docker-compose.yml
+  Makefile
   pyproject.toml
   template-sources.toml
   specs/

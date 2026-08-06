@@ -1,0 +1,11 @@
+.git
+.venv
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.cursor
+__pycache__
+*.py[oc]
+.idea
+.vscode
+.DS_Store

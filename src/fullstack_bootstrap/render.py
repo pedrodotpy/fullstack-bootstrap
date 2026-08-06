@@ -28,6 +28,7 @@ RENDER_EXTENSIONS = frozenset(
         ".txt",
         ".example",
         ".env",
+        ".sh",
     }
 )
 RENDER_BASENAMES = frozenset(
@@ -35,6 +36,7 @@ RENDER_BASENAMES = frozenset(
         "Makefile",
         "Dockerfile",
         ".gitignore",
+        ".dockerignore",
         ".env.example",
         ".npmrc",
         ".python-version",

@@ -11,6 +11,7 @@ Reference implementation: **User**. Follow this checklist for every new resource
 5. **`routes.py`** — register `{ regex, viewset, basename }`.
 6. **Filters** — search / ordering / pagination (limit-offset) as needed.
 7. **Schema** — `uv run python manage.py spectacular --file schema.yml`.
+8. **Tests** — pytest API E2E under `apps/<app>/tests/` covering list/create/retrieve/update/destroy and permission denials; `make test` green.
 
 ## Frontend checklist
 
@@ -21,6 +22,7 @@ Reference implementation: **User**. Follow this checklist for every new resource
 5. **Create / Edit pages** — shared form component; map DRF `{ field: ["msg"] }` errors to inputs.
 6. **Mutations** — invalidate list/detail query keys on success.
 7. **Routes** — under authenticated shell; perm guards for view/add/change.
+8. **Tests** — Playwright under `e2e/` for list/create (and permissions when gated); `yarn test:e2e` green against live Django.
 
 ## User resource map
 

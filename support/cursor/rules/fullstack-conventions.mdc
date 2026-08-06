@@ -11,5 +11,6 @@ alwaysApply: true
 - Settings module: `{{python_id}}.settings.*` — do not reintroduce a `config` package.
 - API contract: `make schema` → `schema.yml` → `yarn openapi-ts`. Never hand-edit `src/shared/api`.
 - Auth: JWT only; keep the product private (no public marketing routes; only `/login` and token endpoints are anonymous).
-- Prefer E2E tests (pytest API, Playwright against live Django) over duplicate unit tests.
+- Tests are mandatory: unfinished without matching E2E (pytest API / Playwright live Django). Do not ask whether to write them.
+- Prefer E2E tests over duplicate unit tests for the same behavior.
 - Follow `./SPECS/05-agent-conventions.md` and `./SPECS/04-crud-pattern.md`.

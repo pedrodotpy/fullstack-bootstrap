@@ -10,6 +10,8 @@ django-boilerplate/
   pyproject.toml
   manage.py
   Makefile
+  Dockerfile
+  docker-compose.yml
   .env.example
   schema.yml
   config/
@@ -21,10 +23,14 @@ django-boilerplate/
     urls.py
   apps/
     common/models.py     # IndexedTimeStampedModel
+    email_server/        # SMTPServer in DB (Django admin only)
     users/
       models.py          # email User
+      email_auth.py      # EmailAuthCode (OTP)
+      auth_codes.py      # create/send helpers
       managers.py
       routes.py
+      templates/users/email/
       api/
         serializers.py
         views.py
@@ -35,9 +41,14 @@ django-boilerplate/
 
 - Split: `base` / `local` / `production` / `test`.
 - Env via `python-decouple` + `dj-database-url` (`DATABASE_URL`).
-- Local default: SQLite (`sqlite:///db.sqlite3`).
+- Local/default: Postgres via Compose (`postgres://postgres:postgres@db:5432/app`).
+- Driver: `psycopg` (binary).
 - `DJANGO_SETTINGS_MODULE=config.settings.local` for development.
-
+- `LOGIN_2FA_ENABLED` (env, default `False`) gates login-time email OTP.
+- Email:
+  - **local**: `EMAIL_BACKEND = filebased.EmailBackend`, writes to `sent_emails/` (gitignored).
+  - **production**: `EMAIL_BACKEND = smtp.EmailBackend`; host/user/password/`from_email` come from `email_server.SMTPServer` at send time (Django admin).
+  - `SMTPServer.send_mail()` uses DB credentials only when the active backend is SMTP; otherwise it honors `get_connection()` so local filebased works without SMTP rows.
 ## Stack
 
 | Package | Purpose |
@@ -48,6 +59,7 @@ django-boilerplate/
 | django-cors-headers | SPA origin |
 | drf-spectacular | OpenAPI schema |
 | python-decouple, dj-database-url | Config |
+| psycopg[binary] | Postgres driver |
 | django-model-utils | Timestamp fields |
 
 ## Custom User
@@ -88,17 +100,22 @@ routes = [
 
 ## Auth endpoints
 
-| Method | Path | Auth |
-|--------|------|------|
-| POST | `/api/v1/auth/token/` | Anonymous |
-| POST | `/api/v1/auth/token/refresh/` | Anonymous |
-| POST | `/api/v1/auth/logout/` | Authenticated |
-| GET | `/api/v1/auth/me/` | Authenticated |
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| POST | `/api/v1/auth/token/` | Anonymous | JWT, or 202 challenge when `LOGIN_2FA_ENABLED` |
+| POST | `/api/v1/auth/token/refresh/` | Anonymous | |
+| POST | `/api/v1/auth/verify-code/` | Anonymous | Completes login 2FA → JWT |
+| POST | `/api/v1/auth/resend-code/` | Anonymous | New OTP for a `challenge_id` |
+| POST | `/api/v1/auth/forgot-password/` | Anonymous | Always 204 |
+| POST | `/api/v1/auth/reset-password/` | Anonymous | email + code + new passwords |
+| POST | `/api/v1/auth/logout/` | Authenticated | |
+| GET | `/api/v1/auth/me/` | Authenticated | |
 
 Token obtain uses **email** + password.
 
 `/me` returns `{ id, email, permissions: ["app_label.codename", ...] }`.
 
+Django admin is mounted at `/admin/` for `SMTPServer` (and other models you register).
 ## User CRUD
 
 - `UserViewSet` at `/api/v1/users/`
@@ -108,44 +125,50 @@ Token obtain uses **email** + password.
 ## OpenAPI
 
 ```bash
-uv run python manage.py spectacular --file schema.yml
-# or: make schema
+make schema
 ```
 
-Schema is consumed by the React repo’s `yarn openapi-ts`.
+Schema is consumed by the React repo’s `make openapi-ts`.
 
 ## CORS
 
-`CORS_ALLOWED_ORIGINS` from env (default `http://localhost:5173`).
+`CORS_ALLOWED_ORIGINS` from env (default includes `http://localhost:5173` and Compose service `http://frontend:5173`).
 
 ## Testing
 
-API E2E via **pytest** + **pytest-django** (full HTTP stack through DRF). Prefer these over model/serializer unit tests for the same behavior.
+API E2E via **pytest** + **pytest-django** (full HTTP stack through DRF). Prefer these over model/serializer unit tests for the same behavior. **Required** for new or changed API behavior — leave `make test` green before considering work done.
 
 ```bash
-make test          # uv run pytest
+make test          # docker compose run --rm backend uv run pytest
 ```
 
-`config/settings/test.py` forces an in-memory SQLite DB so tests do not depend on local Postgres.
+Tests use the Compose **Postgres** service (`DATABASE_URL`); pytest-django creates/destroys `test_<dbname>`. Do not use SQLite for tests.
 
 Seed users for the React Playwright suite:
 
 ```bash
-make seed-e2e      # uv run python manage.py seed_e2e --extra-users 15
+make seed-e2e
+make run           # default LOGIN_2FA_ENABLED=False
+# make run-2fa     # for frontend make test-e2e-2fa
 ```
 
 Credentials: `e2e-admin@example.com` / `e2e-viewer@example.com` with password `e2epass123`.
 
 ## Useful commands
 
+All via Docker Compose (Make wrappers):
+
 ```bash
-uv add <pkg>
-uv add --dev <pkg>
-uv run python manage.py startapp <name> apps/<name>
-uv run python manage.py makemigrations
-uv run python manage.py migrate
-uv run python manage.py createsuperuser
-uv run python manage.py spectacular --file schema.yml
-uv run python manage.py seed_e2e --extra-users 15
-uv run pytest
+make build
+make migrate
+make makemigrations
+make createsuperuser
+make schema
+make seed-e2e
+make test
+make run
+# Dependency adds (inside the backend container):
+docker compose run --rm backend uv add <pkg>
+docker compose run --rm backend uv add --dev <pkg>
+docker compose run --rm backend uv run python manage.py startapp <name> apps/<name>
 ```

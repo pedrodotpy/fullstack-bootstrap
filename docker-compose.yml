@@ -1,0 +1,11 @@
+services:
+  test:
+    build: .
+    volumes:
+      - .:/app
+      - bootstrap_venv:/app/.venv
+    working_dir: /app
+    command: ["uv", "run", "pytest"]
+
+volumes:
+  bootstrap_venv:

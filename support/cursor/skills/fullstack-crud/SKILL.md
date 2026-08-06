@@ -55,13 +55,14 @@ Then:
 1. Add React Query hooks wrapping generated SDK calls
 2. Build list/detail/create/edit pages under the authenticated shell
 3. Gate UI with `<Can perm="app_label.codename">` and route guards
-4. Extend Playwright E2E when auth/CRUD/permissions change — prefer E2E over new unit tests
+4. Extend Playwright E2E for auth/CRUD/permissions changes — required, not optional; prefer E2E over new unit tests
 
 OpenAPI input defaults to `../{{backend_repo}}/schema.yml`.
 
 ## Done checklist
 
-- [ ] API private except JWT obtain/refresh
+- [ ] API private except JWT obtain/refresh (plus forgot/reset/verify/resend when present)
 - [ ] Schema regenerated and client regenerated
 - [ ] Permissions enforced server-side and reflected in UI
-- [ ] Backend `make test` and/or frontend `yarn test:e2e` updated as needed
+- [ ] Backend pytest API E2E updated and `make test` green
+- [ ] Frontend Playwright E2E updated and `yarn test:e2e` green (Django seeded)
